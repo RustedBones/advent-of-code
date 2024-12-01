@@ -1,0 +1,51 @@
+day01.parseLists : Text ->{Exception} ([Nat], [Nat])
+day01.parseLists input =
+  use List map
+  use Pattern capture
+  use patterns digit
+  parseLine line =
+    line
+      |> Pattern.run
+           (Pattern.join
+             [ capture (many digit)
+             , many (patterns.char whitespace)
+             , capture (many digit)
+             ])
+      |> getOrBug "Invalid input"
+      |> at1
+      |> map fromTextOrFail
+  input |> lines |> map parseLine |> (map cases
+    [l, r] -> (l, r)
+    _      -> bug "invalid input") |> List.unzip
+
+day01.part1 : '{IO, Exception} ()
+day01.part1 =
+  do
+    use List map
+    solve input =
+      input
+        |> parseLists
+        |> Tuple.bimap List.sort
+        |> (cases (l, r) -> List.zip l r)
+        |> (map cases (x, y) -> subtractToInt x y)
+        |> map Int.abs
+        |> Nat.sum
+        |> Nat.toText
+    submitSolution (Day 1) (Part 1) solve
+
+day01.part2 : '{IO, Exception} ()
+day01.part2 =
+  do
+    use Nat * +
+    mergeFn = cases
+      Both x y -> Some (x * y)
+      _        -> None
+    solve input =
+      input
+        |> parseLists
+        |> Tuple.bimap (groupMapReduce id (const 1) (+))
+        |> (cases (l, r) -> Map.mergeWith mergeFn l r)
+        |> Map.foldMap (a b -> a + b) (k v -> k * v)
+        |> Optional.getOrElse 0
+        |> Nat.toText
+    submitSolution (Day 1) (Part 2) solve
