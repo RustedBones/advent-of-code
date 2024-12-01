@@ -1,0 +1,17 @@
+edit day01.part2
+edit day01.part1
+edit day01.parseLists
+clear
+push
+update
+run day01.part2
+update
+edit day01.part2
+update
+run day01.part1
+run day01.parseLists "1 2\n3 4"
+edit day01.part1
+run day01.part1
+pull @unison/advent-of-code/releases/latest
+project.create-empty advent-of-code-2024
+roject.create-empty advent-of-code-2024
