@@ -1,0 +1,56 @@
+day02.parseReports : Text ->{Exception} [[Nat]]
+day02.parseReports input =
+  use List map
+  input |> lines |> map (Text.split ?\s >> map fromTextOrFail)
+
+day02.checkLevels : Ordering -> Nat -> Nat -> Boolean
+day02.checkLevels ordering x y =
+    diff = match ordering with
+        Greater -> y - x
+        Less    -> x - y
+        Equal   -> 0
+    1 <= diff && diff <= 3
+
+
+day02.checkReport : [Nat] -> Boolean
+day02.checkReport report =
+  use Nat - <=
+  pairs = report |> slidingPairs 
+  ordering = match pairs with
+    (x, y) +: _ -> Universal.ordering y x
+    _ -> bug "Invalid report"
+  pairs |> (List.all cases (x, y) -> day02.checkLevels ordering x y)
+
+
+day02.part1 : '{IO, Exception} ()
+day02.part1 = do
+  solve input =
+    input |> parseReports |> List.count checkReport |> Nat.toText
+  submitSolution (Day 2) (Part 1) solve
+
+
+day02.checkDampedReport : [Nat] -> Boolean
+day02.checkDampedReport report =
+  check: Ordering -> Optional(Nat) -> [Nat] -> Boolean
+  check ordering damped = cases
+    [x, y] ++ rest ->
+      (checkLevels ordering x y && check ordering damped (y +: rest)) || (
+        isNone damped && check ordering (Some y) (x +: rest))
+    _ ->
+     -- Debug.trace "damped: " damped
+     true
+
+  -- when damping the 1st elements, ordering might change
+  match report with
+    [x, y, z] ++ rest ->
+        (check (Universal.ordering y x) None report) || (
+            check (Universal.ordering z x) (Some y) ([x, z] ++ rest)) || (
+            check (Universal.ordering z y) (Some x) ([y, z] ++ rest))
+    _ -> bug "Invalid report"
+
+
+day02.part2 : '{IO, Exception} ()
+day02.part2 = do
+  solve input =
+    input |> parseReports |> List.count checkDampedReport |> Nat.toText
+  submitSolution (Day 2) (Part 2) solve
