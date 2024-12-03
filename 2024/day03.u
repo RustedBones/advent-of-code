@@ -1,0 +1,94 @@
+day03.numPattern : Pattern Text
+day03.numPattern = Pattern.replicate 0 3 digit
+
+structural type day03.Inst = day03.Enable | day03.Disable | day03.Mul Nat Nat
+
+day03.num: '{Parse} Nat
+day03.num = do
+    pattern! "<num>" (Pattern.some patterns.digit) 
+      |> Nat.fromText
+      |> getOrBug "Internal error in num: failed to parse a Nat"
+
+
+day03.junk : '{Parse} ()
+day03.junk = 
+  mulPattern = Pattern.join [
+    literal "mul(",
+    numPattern,
+    literal ",",
+    numPattern,
+    literal ")",
+  ]
+  doPattern = literal "do()"
+  dontPattern = literal "don't()"
+  instPattern = oneOf (mulPattern +| [doPattern, dontPattern])
+
+  go size = if Parse.content == "" then
+      if size == 0 then failWithUnmetExpectation "junk" else ()
+    else if Parse.content |> isMatch instPattern then
+      if size == 0 then failWithUnmetExpectation "junk" else ()
+    else
+      advance 1
+      go (size + 1)
+
+  do go 0
+
+
+day03.part1 : '{IO, Exception} ()
+day03.part1 = do
+  multiplication = do
+    text! "mul"
+    text! "("
+    left = day03.num()
+    text! ","
+    right = day03.num()
+    text! ")"
+    (left, right)
+
+  solve input =
+    input 
+      |> Parse.run (many ((optional junk) *> multiplication) <* (optional junk))
+      |> ParseResult.toBug
+      |> List.map (cases (x, y) -> x * y)
+      |> Nat.sum
+      |> Nat.toText
+
+  submitSolution (Day 3) (Part 1) solve
+
+
+day03.part2 : '{IO, Exception} ()
+day03.part2 = do
+  multiplication = do
+    text! "mul"
+    text! "("
+    left = day03.num()
+    text! ","
+    right = day03.num()
+    text! ")"
+    Mul left right
+  
+  enable = do
+    text! "do()"
+    day03.Enable
+  
+  disable = do
+    text! "don't()"
+    day03.Disable
+
+  inst = Parse.oneOf [multiplication, enable, disable]
+
+  solve input =
+    input 
+      |> Parse.run (many ((optional junk) *> inst) <* (optional junk))
+      |> ParseResult.toBug
+      |> List.foldLeft (acc -> inst ->
+        match (acc, inst) with
+          ((_, sum), Disable) -> (Disable, sum)
+          ((_, sum), Enable) -> (Enable, sum)
+          ((Enable, sum), day03.Mul l r) -> (Enable, sum + (l * r))
+          _ -> acc
+      ) (Enable, 0)
+      |> at2
+      |> Nat.toText
+
+  submitSolution (Day 3) (Part 2) solve
