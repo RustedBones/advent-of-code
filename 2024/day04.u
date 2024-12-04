@@ -1,0 +1,78 @@
+day04.check : Text -> [Text] -> Nat -> Nat -> Nat
+day04.check keyword grid x y =
+  keywordLen = Text.size keyword
+  readChar a b = grid |> List.at (a) |> Optional.flatMap(charAt b)
+  appendChar t c = c |> Optional.map(Text.snoc t) |> Optional.getOrElse t
+
+  List.range 0 keywordLen |> List.foldLeft (cases 
+    [n, ne, e, se, s, sw, w, nw], i ->
+      charN = if x >= i then readChar (x - i) (y) else None
+      charNE = if x >= i then readChar (x - i) (y + i) else None
+      charE = readChar (x) (y + i)
+      charSE = readChar (x + i) (y + i)
+      charS = readChar (x + i) (y)
+      charSW = if y >= i then readChar (x + i)(y - i) else None
+      charW = if y >= i then readChar (x) (y - i) else None
+      charNW = if y >= i && x >= i then readChar (x - i) (y - i) else None
+      [
+        appendChar n charN,
+        appendChar ne charNE,
+        appendChar e charE,
+        appendChar se charSE,
+        appendChar s charS,
+        appendChar sw charSW,
+        appendChar w charW,
+        appendChar nw charNW,
+      ]
+    _, _ -> bug "Illegal accumulator"
+  ) ["", "", "", "", "", "", "", ""] |> List.count (x -> x == keyword)
+
+
+day04.part1 : '{IO, Exception} ()
+day04.part1 = do
+  solve input =
+    grid = input |> Text.lines
+
+    length = grid |> List.size
+    width = grid |> List.at 0 |> getOrBug "" |> Text.size
+
+    List.range 0 length 
+      |> List.flatMap(x -> List.range 0 width |> List.map(y -> (x, y)))
+      |> List.map(cases (x, y) -> check "XMAS" grid x y)
+      |> Nat.sum
+      |> Nat.toText
+
+  submitSolution (Day 4) (Part 1) solve
+
+day04.crossMasCheck : [Text] -> Nat -> Nat -> Boolean
+day04.crossMasCheck grid x y =
+  readChar a b = grid |> List.at (a) |> Optional.flatMap(charAt b)
+  diagonal a b c = [a, b, c] |> List.flatMap(Optional.toList) |> fromCharList
+
+  c = readChar (x) (y)
+  ne = readChar (x - 1) (y + 1)
+  se = readChar (x + 1) (y + 1)
+  sw = readChar (x + 1) (y - 1)
+  nw = readChar (x - 1) (y - 1)
+
+  diag1 = diagonal ne c sw
+  diag2 = diagonal nw c se
+
+  (diag1 == "MAS" || (Text.reverse diag1) == "MAS")
+    && (diag2 == "MAS" || (Text.reverse diag2) == "MAS")
+
+day04.part2 : '{IO, Exception} ()
+day04.part2 = do
+  solve input =
+    grid = input |> Text.lines
+
+    length = grid |> List.size
+    width = grid |> List.at 0 |> getOrBug "" |> Text.size
+
+    List.range 1 (length - 1) 
+      |> List.flatMap(x -> List.range 1 (width - 1) |> List.map(y -> (x, y)))
+      |> List.filter(cases (x, y) -> crossMasCheck grid x y)
+      |> List.size
+      |> Nat.toText
+
+  submitSolution (Day 4) (Part 2) solve
