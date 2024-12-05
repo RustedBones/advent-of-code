@@ -1,0 +1,79 @@
+structural type day05.Rule = {before: Set Nat, after: Set Nat}
+
+day05.parsePageNumber = Nat.fromText >> getOrBug "Invalid page number"
+
+day05.parseRules: [Text] -> Map Nat Rule
+day05.parseRules input =
+  input
+    |> List.map (Text.split ?| >> List.map(parsePageNumber))
+    |> List.foldLeft (cases
+        rules, [x, y] ->
+          mergeRules = cases
+            Rule b1 a1, Rule b2 a2 -> Rule (Set.union b1 b2) (Set.union a1 a2)
+          beforeRule = Rule (Set.singleton x)  Set.empty
+          afterRule = Rule Set.empty (Set.singleton y)
+          rules 
+            |> Map.putWith (mergeRules) y beforeRule -- x before y
+            |>  Map.putWith (mergeRules) x afterRule -- y after x
+        _, _-> 
+          bug "Invalid input"
+    ) (Map.empty)
+
+
+day05.parseUpdates: [Text] -> [[Nat]]
+day05.parseUpdates input = 
+  input
+    |> List.map(Text.split ?, >> List.map(parsePageNumber))
+
+
+day05.checkUpdate: Map Nat Rule -> [Nat] -> Boolean
+day05.checkUpdate rules update = 
+  go : [Nat] -> [Nat] -> Boolean
+  go prev = cases
+    [] -> true
+    p +: ps ->
+      (Rule b a) = Map.get p rules |> getOrBug "No rule for page"
+      (Set.subset (Set.fromList prev) b) 
+        && (Set.subset (Set.fromList ps) a)
+        && go (prev :+ p) ps
+  
+  go [] update
+
+day05.part1 : '{IO, Exception} ()
+day05.part1 = do
+  solve input =
+    match (input |> lines |> List.split Text.isEmpty) with
+      [rs, us] -> 
+        rules = day05.parseRules rs
+        updates = day05.parseUpdates us
+
+        updates
+          |> List.filter(checkUpdate rules) 
+          |> List.map(halve >> at2 >> List.head >> getOrBug "Empty update")
+          |> Nat.sum
+          |> Nat.toText
+      _ -> bug "Illegal input"
+
+  submitSolution (Day 5) (Part 1) solve
+
+
+day05.part2 : '{IO, Exception} ()
+day05.part2 = do
+  solve input =
+    match (input |> lines |> List.split Text.isEmpty) with
+      [rs, us] -> 
+        rules = day05.parseRules rs
+        updates = day05.parseUpdates us
+
+        lowerThan x y =
+          (Rule b a) = Map.get y rules |> getOrBug "No rule for page"
+          Set.contains x b
+
+        updates
+          |> List.filter(checkUpdate rules >> not)
+          |> List.map(List.sortWith lowerThan)
+          |> List.map(halve >> at2 >> List.head >> getOrBug "Empty update")
+          |> Nat.sum
+          |> Nat.toText
+      _ -> bug "Illegal input"
+  submitSolution (Day 5) (Part 2) solve
