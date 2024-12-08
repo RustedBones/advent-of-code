@@ -1,0 +1,133 @@
+structural type day06.Direction = North | East | South | West
+
+day06.turn = cases
+  North -> East
+  East -> South
+  South -> West
+  West -> North
+
+day06.part1 : '{IO, Exception} ()
+day06.part1 = do
+  solve input =
+    map = input 
+            |> lines 
+            |> List.map(Text.toCharList)
+    
+    height = List.size map
+    width = Abort.toBug do List.size (List.at! 0 map)
+
+    next pos direction = match (pos, direction) with
+      ((x, y), North)
+        | x == 0 -> None
+        | otherwise -> Some (x - 1, y)
+      ((x, y), East)
+        | y == width - 1 -> None
+        | otherwise -> Some (x, y + 1)
+      ((x, y), South)
+        | x == height - 1 -> None
+        | otherwise -> Some (x + 1, y)
+      ((x, y), West)
+        | y == 0 -> None
+        | otherwise -> Some (x, y - 1)
+
+    read = cases 
+      (x, y) -> Abort.toBug do map |> List.at! x |> List.at! y
+
+    startPos = map 
+                |> indexed
+                |> findMap (cases (line, x) -> 
+                  line |> firstIndexOf(?^) |> Optional.map (y -> (x, y))
+                )
+                |> getOrBug "No guard found"
+  
+    
+    go : Set (Nat, Nat) -> (Nat, Nat) -> Direction -> {} Nat
+    go visited pos direction = 
+      match next pos direction with
+        None -> Set.size visited
+        Some nextPos ->
+          match read nextPos with
+            ?# -> go visited pos (turn direction)
+            _ -> go (Set.insert nextPos visited) nextPos direction
+        
+    go (Set.singleton startPos) startPos North |> Nat.toText
+
+  submitSolution (Day 6) (Part 1) solve
+
+
+day06.part2 : '{IO, Exception} ()
+day06.part2 = do
+  solve input =
+    map = input 
+            |> lines 
+            |> List.map(Text.toCharList)
+    
+    height = List.size map
+    width = Abort.toBug do List.size (List.at! 0 map)
+
+    next pos direction = match (pos, direction) with
+      ((x, y), North)
+        | x == 0 -> None
+        | otherwise -> Some (x - 1, y)
+      ((x, y), East)
+        | y == width - 1 -> None
+        | otherwise -> Some (x, y + 1)
+      ((x, y), South)
+        | x == height - 1 -> None
+        | otherwise -> Some (x + 1, y)
+      ((x, y), West)
+        | y == 0 -> None
+        | otherwise -> Some (x, y - 1)
+
+    read = cases 
+      (x, y) -> Abort.toBug do map |> List.at! x |> List.at! y
+
+    startPos = map 
+                |> indexed
+                |> findMap (cases (line, x) -> 
+                  line |> firstIndexOf(?^) |> Optional.map (y -> (x, y))
+                )
+                |> getOrBug "No guard found"
+      
+    checkLoop: (Nat, Nat) -> Set ((Nat, Nat), Direction) -> (Nat, Nat) -> Direction -> Boolean
+    checkLoop blockedPos encounter pos direction =
+      match next pos direction with
+        None -> false
+        Some nextPos ->
+          item = if eq blockedPos nextPos then ?# else read nextPos
+          match item with 
+            ?# | Set.contains (pos, direction) encounter -> true
+               | otherwise ->
+              nextEncounter = Set.insert (pos, direction) encounter
+              nextDirection = turn direction                            
+              checkLoop blockedPos nextEncounter pos nextDirection
+            _ ->
+              checkLoop blockedPos encounter nextPos direction
+
+
+    go : Set (Nat, Nat) -> (Nat, Nat) -> Direction -> Nat
+    go blockingPos pos direction =
+      match next pos direction with
+        None -> blockingPos |> Set.size
+        Some nextPos ->
+          match read nextPos with
+            ?# ->
+              nextDirection = turn direction              
+              go blockingPos pos nextDirection
+            _ ->
+              Debug.trace "nextPos" nextPos
+              looping = if Set.contains nextPos blockingPos then
+                -- we tried it already 
+                false
+              else
+                blockedDirection = turn direction
+                checkLoop nextPos Set.empty startPos North
+
+              nextBlocked = if looping then Set.insert nextPos blockingPos else blockingPos
+              go nextBlocked nextPos direction
+
+
+    go Set.empty startPos North |> Nat.toText
+
+  submitSolution (Day 6) (Part 2) solve
+  

@@ -1,0 +1,94 @@
+day08.parseInput : Text -> List (Char, (List.Nonempty (Nat, Nat)))
+day08.parseInput input =
+  input
+    |> lines
+    |> mapIndexed cases 
+        x, l -> l |> toCharList |> mapIndexed cases 
+          y, c -> (c, (x, y))
+    |> List.flatMap id
+    |> List.filter (at1 >> (x -> x != ?.))
+    |> List.groupMap at1 at2
+    |> Map.toList
+
+
+
+day08.part1 : '{IO, Exception} ()
+day08.part1 = do
+  solve input =
+    map = input |> lines |> List.map toCharList
+
+    length = map |> List.size |> Nat.toInt
+    width = map |> List.head |> getOrBug "Invalid input" |> List.size |> Nat.toInt
+
+    antiNodes = cases ((x1, y1), (x2, y2)) ->
+      antiX1 = (Nat.toInt x2) + (Nat.subtractToInt x2 x1)
+      antiY1 = (Nat.toInt y2) + (Nat.subtractToInt y2 y1)
+
+      antiX2 = (Nat.toInt x1) + (Nat.subtractToInt x1 x2)
+      antiY2 = (Nat.toInt y1) + (Nat.subtractToInt y1 y2)
+    
+      [(antiX1, antiY1), (antiX2, antiY2)]
+        |> List.filter cases (x, y) -> 
+          x >= +0 && x < length && y >= +0 && y < width
+        |> List.map cases (x, y) -> 
+          (Int.toNat x |> getOrBug "Invalid x", Int.toNat y |> getOrBug "Invalid y")
+
+    input
+      |> day08.parseInput
+      |> List.flatMap cases (_, positions) ->
+        positions 
+          |> List.Nonempty.toList
+          |> allPairs
+          |> List.flatMap antiNodes
+      |> distinct
+      |> List.size
+      |> Nat.toText
+  
+  submitSolution (Day 8) (Part 1) solve
+
+day08.part2 : '{IO, Exception} ()
+day08.part2 = do
+  solve input =
+    map = input |> lines |> List.map toCharList
+
+    length = map |> List.size |> Nat.toInt
+    width = map |> List.head |> getOrBug "Invalid input" |> List.size |> Nat.toInt
+
+    diagonal : (Int, Int) -> List (Int, Int) -> (Int, Int) -> List (Int, Int)
+    diagonal diff nodes = cases (x, y) -> 
+      if x >= +0 && x < length && y >= +0 && y < width then
+        (dx, dy) = diff
+        next = (x + dx, y + dy)
+        diagonal diff (next +: nodes) next
+      else
+        nodes
+
+    antiNodes = cases ((x1, y1), (x2, y2)) ->
+      diffX1 = (Nat.subtractToInt x2 x1)
+      diffY1 = (Nat.subtractToInt y2 y1)
+
+      diffX2 = (Nat.subtractToInt x1 x2)
+      diffY2 = (Nat.subtractToInt y1 y2)
+
+      anti1 = diagonal (diffX1, diffY1) [] (Nat.toInt x1, Nat.toInt y1)
+      anti2 = diagonal (diffX2, diffY2) [] (Nat.toInt x2, Nat.toInt y2)
+
+    
+      anti1 ++ anti2
+        |> List.filter cases (x, y) -> 
+          x >= +0 && x < length && y >= +0 && y < width
+        |> List.map cases (x, y) -> 
+          (Int.toNat x |> getOrBug "Invalid x", Int.toNat y |> getOrBug "Invalid y")
+
+    input
+      |> day08.parseInput
+      |> List.flatMap cases (_, positions) ->
+        positions 
+          |> List.Nonempty.toList
+          |> allPairs
+          |> List.flatMap antiNodes
+      |> distinct
+      |> List.size
+      |> Nat.toText
+  
+  submitSolution (Day 8) (Part 2) solve

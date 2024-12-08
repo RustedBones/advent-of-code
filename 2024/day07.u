@@ -1,0 +1,63 @@
+day07.parseInput : Text -> [(Nat, [Nat])]
+day07.parseInput input =
+  input
+    |> lines
+    |> List.map(line -> 
+      match line |> Text.split ?: with
+        [t, ns] ->
+          target = t |> Nat.fromTextOrFail
+          numbers = ns |> trim |> Text.split ?\s |> List.map(fromTextOrFail)
+          (target, numbers)
+        _ -> bug "Invalid input"
+    )
+
+
+day07.part1 : '{IO, Exception} ()
+day07.part1 = do
+  checkValid : Nat -> Nat -> [Nat] -> Boolean
+  checkValid target result = cases
+    [] -> target == result
+    n +: ns ->
+      plus = result + n
+      mult = result * n
+      (plus <= target) && (checkValid target plus ns)
+        || (mult <= target) && (checkValid target mult ns)
+    
+
+  solve input =
+    input 
+      |> day07.parseInput 
+      |> List.filter cases
+        (target, n +: ns) -> checkValid target n ns
+        _ -> bug "Empty nums"
+      |> List.map at1
+      |> Nat.sum
+      |> Nat.toText
+  
+  submitSolution (Day 7) (Part 1) solve
+
+day07.part2 : '{IO, Exception} ()
+day07.part2 = do
+  checkValid : Nat -> Nat -> [Nat] -> Boolean
+  checkValid target result = cases
+    [] -> target == result
+    n +: ns ->
+      plus = result + n
+      mult = result * n
+      concat = (Nat.toText result) ++ (Nat.toText n) |> Nat.fromText |> getOrBug "Invalid number"
+      (plus <= target) && (checkValid target plus ns)
+        || (mult <= target) && (checkValid target mult ns)
+        || (concat <= target) && (checkValid target concat ns)
+    
+
+  solve input =
+    input 
+      |> day07.parseInput 
+      |> List.filter cases
+        (target, n +: ns) -> checkValid target n ns
+        _ -> bug "Empty nums"
+      |> List.map at1
+      |> Nat.sum
+      |> Nat.toText
+  
+  submitSolution (Day 7) (Part 2) solve
