@@ -1,0 +1,82 @@
+day09.parseInput input =
+  input
+    |> Text.toCharList
+    |> List.map (Char.toText >> Nat.fromText >> getOrBug "Invalid input")
+    |> uncollate
+
+day09.part1 : '{IO, Exception} ()
+day09.part1 = do
+  solve input = 
+    (fileSizes, emptySizes) = parseInput input
+    fileIds = fileSizes |> List.indexed
+
+    compact : Boolean -> List Nat -> List (Nat, Nat) -> List Nat -> List Nat
+    compact freeSpace disk files empties =
+      if freeSpace then
+        match (files, empties) with
+          ([], _) -> disk
+          (fs, []) -> compact false disk fs []
+          (fs, 0 +: es) -> compact false disk fs es
+          (fs :+ (0, _), es) -> compact true disk fs es
+          (fs :+ (f, fid), e +: es) -> compact true (disk :+ fid) (fs :+ (f - 1, fid)) ((e - 1) +: es)
+      else
+        match (files, empties) with
+          ([], _) -> disk
+          ((0, _) +: fs, es) -> compact true disk fs es
+          ((f, fid) +: fs, es) -> compact false (disk :+ fid) ((f - 1, fid) +: fs) es
+
+    disk = compact false [] fileIds emptySizes
+
+    disk |> mapIndexed (Nat.*) |> Nat.sum |> Nat.toText
+
+  submitSolution (Day 9) (Part 1) solve
+
+day09.part2 : '{IO, Exception} ()
+day09.part2 = do
+  solve input =
+    (fileSizes, emptySizes) = parseInput input
+    fileIds = fileSizes |> mapIndexed (id -> f -> (f, Nat.toInt id))
+    emptyIds = emptySizes |> map (e -> (e, -1))
+
+    findEmpty: Nat -> (Nat, Int) -> Boolean
+    findEmpty size = cases
+      (s, -1) -> s >= size
+      (s, _) -> false
+
+    compact : Int -> List Int -> List (Nat, Int) -> List Int
+    compact maxId disk = cases
+      [] -> disk
+      rest :+ (size, -1) ->
+        mem = List.fill size -1
+        compact maxId (mem ++ disk) rest
+      rest :+ (size, id) 
+        | id > maxId ->
+          -- file already moved
+          mem = List.fill size id
+          compact maxId (mem ++ disk) rest
+        | otherwise ->
+          match List.findFirstIndex (findEmpty size) rest with
+            None ->
+              mem = List.fill size id
+              compact id (mem ++ disk) rest
+            Some i ->
+              (e, _) = rest |> List.at i |> getOrBug "Invalid index"
+              replaced = 
+                rest 
+                  |> replace i (size, id) 
+                  |> (r -> if e > size then insertAt (i + 1) (e - size, -1) r else r)
+
+
+              mem = List.fill size -1
+              compact id (mem ++ disk) replaced
+
+    disk = compact maxInt [] (List.interleave fileIds emptyIds)
+    
+    disk 
+      |> indexed 
+      |> filter (cases (id, _) -> id != -1)
+      |> map (cases (id, idx) -> id |> Nat.fromInt |> getOrBug "Invalid id" |> (id -> id * idx))
+      |> Nat.sum
+      |> Nat.toText
+
+  submitSolution (Day 9) (Part 2) solve
