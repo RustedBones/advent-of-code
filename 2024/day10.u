@@ -1,0 +1,92 @@
+day10.parseInput input =
+  input
+    |> lines
+    |> List.map (toCharList >> List.map (Char.toText >> Nat.fromText >> getOrBug "Invalid Nat"))
+
+
+day10.findTrailHeads topo =
+  topo 
+    |> mapIndexed (x -> (mapIndexed (y -> h -> (h, (x, y)))))
+    |> flatMap id
+    |> filter cases (h, _) -> h == 0
+    |> map cases (_, pos) -> pos
+
+
+day10.readHeight topo = cases (x, y) -> 
+  Abort.toBug do
+    topo |> List.at! x |> List.at! y
+
+
+day10.part1 : '{IO, Exception} ()
+day10.part1 = do
+  solve input =
+    topo = day10.parseInput input
+
+    length = topo |> List.size
+    width = topo |> List.at 0 |> getOrBug "Invalid topo" |> List.size
+
+    nextPosistions : (Nat, Nat) -> [(Nat, Nat)]
+    nextPosistions = cases (x, y) ->
+      north = if x > 0 then Some (x - 1, y) else None
+      east = if y < (width - 1) then Some (x, y + 1) else None
+      south = if x < (length - 1) then Some (x + 1, y) else None
+      west = if y > 0 then Some (x, y - 1) else None
+
+      [north, east, south, west] |> List.flatMap Optional.toList
+
+    searchSummit: (Nat, Nat) -> [(Nat, Nat)]
+    searchSummit pos =
+      match readHeight topo pos with
+        9 -> [pos]
+        h -> 
+          nextHeight = h + 1
+          pos
+            |> nextPosistions
+            |> List.filter (p -> (readHeight topo p) == nextHeight)
+            |> List.flatMap (searchSummit)
+          
+    
+    trailHeads = findTrailHeads topo
+    trailHeads 
+      |> List.map (searchSummit >> List.distinct >> List.size)
+      |> Nat.sum
+      |> Nat.toText
+
+  submitSolution (Day 10) (Part 1) solve
+
+day10.part2 : '{IO, Exception} ()
+day10.part2 = do
+  solve input =
+    topo = day10.parseInput input
+
+    length = topo |> List.size
+    width = topo |> List.at 0 |> getOrBug "Invalid topo" |> List.size
+
+    nextPosistions : (Nat, Nat) -> [(Nat, Nat)]
+    nextPosistions = cases (x, y) ->
+      north = if x > 0 then Some (x - 1, y) else None
+      east = if y < (width - 1) then Some (x, y + 1) else None
+      south = if x < (length - 1) then Some (x + 1, y) else None
+      west = if y > 0 then Some (x, y - 1) else None
+
+      [north, east, south, west] |> List.flatMap Optional.toList
+
+    searchSummit: (Nat, Nat) -> [(Nat, Nat)]
+    searchSummit pos =
+      match readHeight topo pos with
+        9 -> [pos]
+        h -> 
+          nextHeight = h + 1
+          pos
+            |> nextPosistions
+            |> List.filter (p -> (readHeight topo p) == nextHeight)
+            |> List.flatMap (searchSummit)
+          
+    
+    trailHeads = findTrailHeads topo
+    trailHeads 
+      |> List.map (searchSummit >> List.size)
+      |> Nat.sum
+      |> Nat.toText
+
+  submitSolution (Day 10) (Part 2) solve
