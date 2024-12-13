@@ -1,0 +1,90 @@
+day13.parseNat input = input |> Nat.fromText |> getOrBug "Invalid Nat"
+
+day13.parseButton char text =
+  button = Text.snoc "Button " char
+  natPattern = Pattern.many digit
+  buttonPattern = Pattern.join([literal (button  ++ ": X+"), capture(natPattern), literal ", Y+", capture(natPattern)])
+  Pattern.run buttonPattern text
+    |> getOrBug ("Invalid button: " ++ text)
+    |> cases
+      ([x, y], "") -> (x, y) |> Tuple.bimap day13.parseNat
+      _ -> bug "Invalid pattern"
+
+day13.parsePrize text =
+  natPattern = Pattern.many digit
+  buttonPattern = Pattern.join([literal "Prize: X=", capture(natPattern), literal ", Y=", capture(natPattern)])
+  Pattern.run buttonPattern text
+    |> getOrBug ("Invalid button: " ++ text)
+    |> cases
+      ([x, y], "") -> (x, y) |> Tuple.bimap day13.parseNat
+      _ -> bug "Invalid pattern"
+  
+
+day13.parseInput input =
+  input
+    |> Text.lines
+    |> List.split (Text.isEmpty)
+    |> List.map cases
+      [a, b, prize] ->
+        buttonA = parseButton ?A a
+        buttonB = parseButton ?B b
+        prizePos = parsePrize prize
+        (buttonA, buttonB, prizePos)
+      _ -> bug "Invalid input"
+
+
+day13.play = cases
+  _, _, (0, 0), _, plays -> Some plays
+  _, _, _, ?A, (a, _) | a > 100 -> None
+  _, _, _, ?B, (_, b) | b > 100 -> None
+  a@(ax, ay), b, p@(x, y), ?A, c@(ac, bc) ->
+    if x >= ax && y >= ay then
+      play a b (x - ax, y - ay) ?A (ac + 1, bc) 
+        |> Optional.orElse (play a b p ?B c)
+    else
+      play a b p ?B c
+  a, b@(bx, by), p@(x, y), ?B, c@(ac, bc) ->
+    if x >= bx && y >= by then
+      play a b (x - bx, y - by) ?B (ac, bc + 1)
+    else
+      None
+  _, _, _, _, _ -> bug "InvalidState"
+
+
+day13.part1 : '{IO, Exception} ()
+day13.part1 = do
+  solve input =
+    input 
+      |> day13.parseInput
+      |> List.map cases
+        (a, b, p) -> 
+
+          play a b p ?A (0, 0)
+      |> List.somes
+      |> List.map cases (ca, cb) -> 3 * ca + 1 * cb
+      |> Nat.sum
+      |> Nat.toText
+
+  submitSolution (Day 13) (Part 1) solve
+
+day13.part2 : '{IO, Exception} ()
+day13.part2 = do
+  solve input =
+    input 
+      |> day13.parseInput
+      |> List.map cases
+        ((ax, ay), (bx, by), p) -> 
+          (x, y) = Tuple.bimap (x -> x + 10000000000000) p
+          det = subtractToInt (ax * by) (bx * ay)
+          countA = subtractToInt (x * by) (y * bx) / det |> Nat.fromInt
+          countB = subtractToInt (ax * y) (ay * x) / det |> Nat.fromInt
+          match (countA, countB) with
+            (Some ca, Some cb) | eq ((ax * ca) + (bx * cb), (ay * ca) + (by * cb)) (x, y) ->
+              Some (ca, cb)
+            _ -> None
+      |> List.somes
+      |> List.map cases (ca, cb) -> 3 * ca + 1 * cb
+      |> Nat.sum
+      |> Nat.toText
+
+  submitSolution (Day 13) (Part 2) solve
