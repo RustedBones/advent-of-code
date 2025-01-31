@@ -1,0 +1,89 @@
+structural type day14.Robot = day14.Robot (Int, Int) (Nat, Nat)
+
+day14.parseInput input =
+  input
+    |> lines
+    |> List.map (l -> 
+      match l |> splitOn whitespace |> List.map (Text.drop 2) |> List.map (Text.split ?,) with
+        [[x, y], [dx, dy]] ->
+          pos = (x, y) |> Tuple.bimap (Nat.fromText >> getOrBug "Invalid pos")
+          vel = (dx, dy) |> Tuple.bimap (Int.fromText >>  getOrBug "Invalid velocity")
+          day14.Robot vel pos
+        _ -> bug "Invalid input"
+    )
+
+day14.wrap max value = Int.emod value (Nat.toInt max)
+
+day14.part1 : '{IO, Exception} ()
+day14.part1 = do
+  solve input = 
+    robots = input |> day14.parseInput
+
+    width = 101
+    height = 103
+    seconds = +100
+
+    midWidth = width / 2
+    midHeight = height / 2
+
+    robots
+      |> List.map cases day14.Robot (dx, dy) (x, y) ->
+                  newPos = ((Nat.toInt x) + (seconds * dx), (Nat.toInt y) + (seconds * dy)) 
+                            |> mapPair (wrap width, wrap height)
+                  day14.Robot (dx, dy) newPos
+      |> List.foldLeft (cases (nw, ne, sw, se), day14.Robot _ (x, y) ->
+        if (x < midWidth && y < midHeight) then (nw + 1, ne, sw, se)
+        else if (x > midWidth && y < midHeight) then (nw, ne + 1, sw, se)
+        else if (x < midWidth && y > midHeight) then (nw, ne, sw + 1, se)
+        else if (x > midWidth && y > midHeight) then (nw, ne, sw, se + 1)
+        else (nw, ne, sw, se)
+      ) (0, 0, 0, 0)
+      |> cases (nw, ne, sw, se) -> nw * ne * sw * se
+      |> Nat.toText
+
+  submitSolution (Day 14) (Part 1) solve
+
+day14.part2 : '{IO, Exception} ()
+day14.part2 = do
+  solve input =
+    robots = input |> day14.parseInput
+
+    width = 101
+    height = 103
+
+    countLine count = cases
+      [a, b] ++ rest 
+        | (a + 1) == b -> countLine (count + 1) (b +: rest)
+        | otherwise -> countLine count (b +: rest)
+      _ -> count
+
+    treeAlignment robots =
+      robots
+        |> groupMapReduce (cases day14.Robot _ (x, y) -> y) (cases day14.Robot _ (x, y) -> [x]) (List.++)
+        |> Map.values
+        |> List.map(List.sort >> countLine 0)
+        |> List.filter(x -> x > 5)
+        |> Debug.tap "test"
+        |> (List.size >> (x -> x > 4))
+
+
+    detectTree seconds robots =
+      Debug.trace "seconds" seconds
+      newRobots = 
+        robots
+          |> List.map cases day14.Robot (dx, dy) (x, y) ->
+              newPos = ((Nat.toInt x) + dx, (Nat.toInt y) + dy) 
+                          |> mapPair (wrap width, wrap height)
+              day14.Robot (dx, dy) newPos
+      
+      if newRobots |> treeAlignment then
+        Debug.trace "robots" newRobots
+        seconds
+      else
+        detectTree (seconds + 1) newRobots
+        
+
+    detectTree 0 robots |> Nat.toText
+
+  getInputText (Day 14) |> solve |> Debug.trace "result"
+  -- submitSolution (Day 14) (Part 2) solve

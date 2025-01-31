@@ -1,0 +1,50 @@
+day18.parseInput input =
+  input 
+    |> lines
+    |> List.map(Text.split ?, >> (cases 
+      [x, y] -> (x, y) |> Tuple.bimap(Nat.fromText >> getOrBug "Invalid position")
+      _ -> bug "Invalid input"
+    ))
+      
+
+day18.part1 : '{IO, Exception} ()
+day18.part1 = do
+  solve input =
+    input 
+      |> day18.parseInput
+      |> List.take(12)
+
+  map = Map.empty
+  exit = (6, 6)
+
+
+
+
+  """5,4
+4,2
+4,5
+3,0
+2,1
+6,3
+2,4
+1,5
+0,6
+3,3
+2,6
+5,1
+1,2
+5,5
+2,5
+6,5
+1,4
+0,4
+6,4
+1,1
+6,1
+1,0
+0,5
+1,6
+2,0""" |> solve |> Debug.trace "result"
+  --submitSolution (Day 18) (Part 1) solve
+
+

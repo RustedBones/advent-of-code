@@ -1,0 +1,113 @@
+day15.parseInput input =
+  match input |> lines |> List.split (Text.isEmpty) with
+    [map, inst] -> (map, inst) |> Tuple.bimap (List.map(Text.toCharList)) |> Tuple.mapRight(List.flatMap id)
+    _ -> bug "Invalid input"  
+
+
+day15.robotPos: [[Char]] -> (Nat, Nat)
+day15.robotPos map =
+  map 
+    |> indexed 
+    |> flatMap (cases (l, y) -> l |> indexed |> List.map (cases (c, x) -> (c, (x, y)))) 
+    |> List.find cases (c, _) -> c == ?@
+    |> getOrBug "Start pos not found"
+    |> at2
+
+day15.move updated line = 
+  match line with
+    ?# +: _ -> updated ++ line
+    ?. +: rest -> (?. +: updated) ++ rest
+    c +: rest -> move (updated :+ c) rest
+    _ -> bug "Invalid input"
+
+
+day15.play map inst = Abort.toBug do
+  (x, y) = robotPos map
+  Debug.trace "map" (map |> List.map(fromCharList) |> unlines)
+  match inst with
+    [] -> map
+    ?^ +: is -> 
+      t = map |> transpose
+      l = t |> at! x |> (l -> l |> List.splitAt (y + 1) |> cases (up, down) -> move [] (List.reverse up) |> List.reverse |> (l -> l ++ down))
+      play (t |> List.replace x l |> transpose) is
+    ?v +: is ->
+      t = map |> transpose
+      l = t |> at! x |> (l -> l |> List.splitAt y |> cases (up, down) -> move [] down |> (l -> up ++ l))
+      play (t |> List.replace x l |> transpose) is
+    ?< +: is ->
+      l = map |> at! y |> (l -> l |> List.splitAt (x + 1) |> cases (left, right) -> move [] (List.reverse left) |> List.reverse |> (l -> l ++ right))
+      play (map |> replace y l) is
+    ?> +: is ->
+      l = map |> at! y |> (l -> l |> List.splitAt x |> cases (left, right) -> move [] right |> (l -> left ++ l))
+      play (map |> replace y l) is
+    _ -> bug "Invalid inst"
+
+
+day15.sumBoxes map =
+  map
+    |> List.indexed
+    |> List.flatMap (cases (l, y) -> l |> indexed |> List.map (cases (c, x) -> (c, (x, y))))
+    |> List.foldLeft (cases
+        sum, (?O, (x, y)) -> sum + (x + 100 * y)
+        sum, (?[, (x, y)) -> sum + (x + 100 * y)
+        sum, _ -> sum
+      ) 0
+
+
+day15.part1 : '{IO, Exception} ()
+day15.part1 = do
+  solve input = 
+    (map, inst) = day15.parseInput input
+    play map inst 
+      |> sumBoxes
+      |> Nat.toText
+  submitSolution (Day 15) (Part 1) solve
+
+
+day15.playWide map inst = Abort.toBug do
+  (x, y) = robotPos map
+  Debug.trace "map" (map |> List.map(fromCharList) |> unlines)
+  match inst with
+    [] -> map
+    ?^ +: is -> 
+      t = map |> transpose
+      l = t |> at! x |> (l -> l |> List.splitAt (y + 1) |> cases (up, down) -> move [] (List.reverse up) |> List.reverse |> (l -> l ++ down))
+      play (t |> List.replace x l |> transpose) is
+    ?v +: is ->
+      t = map |> transpose
+      l = t |> at! x |> (l -> l |> List.splitAt y |> cases (up, down) -> move [] down |> (l -> up ++ l))
+      play (t |> List.replace x l |> transpose) is
+    ?< +: is ->
+      l = map |> at! y |> (l -> l |> List.splitAt (x + 1) |> cases (left, right) -> move [] (List.reverse left) |> List.reverse |> (l -> l ++ right))
+      play (map |> replace y l) is
+    ?> +: is ->
+      l = map |> at! y |> (l -> l |> List.splitAt x |> cases (left, right) -> move [] right |> (l -> left ++ l))
+      play (map |> replace y l) is
+    _ -> bug "Invalid inst"
+
+day15.part2 : '{IO, Exception} ()
+day15.part2 = do
+  solve input = 
+    (map, inst) = day15.parseInput input
+   
+    wideMap = map |> List.map (l -> l |> List.flatMap (cases
+      ?# -> [?#, ?#]
+      ?O -> [?[, ?]]
+      ?. -> [?., ?.]
+      ?@ -> [?@, ?.]
+      _ -> bug "Invalid input"
+    ))
+
+    play wideMap inst
+      |> sumBoxes
+      |> Nat.toText
+  """#######
+#...#.#
+#.....#
+#..OO@#
+#..O..#
+#.....#
+#######
+
+<vv<<^^<<^^""" |> solve |> Debug.trace "result"  
+  --submitSolution (Day 15) (Part 1) solve

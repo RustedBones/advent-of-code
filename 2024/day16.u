@@ -1,0 +1,129 @@
+
+day16.parseInput input =
+  input |> lines |> List.map(toCharList)
+
+day16.move direction = cases (x, y) ->
+  match direction with
+    ?^ -> (x, y - 1)
+    ?> -> (x + 1, y)
+    ?v ->(x, y + 1)
+    ?< -> (x - 1, y)
+    _ -> bug "Invalid direction"
+
+day16.read maze = cases (x, y) ->
+  Abort.toBug do
+    maze |> List.at! y |> List.at! x
+
+day16.rotate : Boolean -> Char -> Char
+day16.rotate clockwise direction =
+  dirs = [?^, ?>, ?v, ?<]
+  dirs 
+    |> List.findFirstIndex(c -> c == direction)
+    |> getOrBug "Invalid direction"
+    |> (x -> if clockwise then (x + 1) % 4 else Int.emod ((Nat.toInt x) - +1) +4)
+    |> (x -> List.at x dirs |> getOrBug "Invalid direction")
+
+
+day16.part1 : '{IO, Exception} ()
+day16.part1 = do
+  solve input =
+    maze = input |> day16.parseInput
+    
+    width = maze |> List.at 0 |> getOrBug "" |> List.size
+    height = maze |> List.size
+
+    startPos = (1, height - 2)
+    endPos = (width - 2, 1)
+
+    search : Map (Nat, Nat) Nat -> [((Nat, Nat), Char, Nat)] -> Nat
+    search scores paths =
+      match paths |> sortBy at3 with
+        [] -> bug "End not found"
+        (pos, _, score) +: _ | eq pos endPos -> score
+        (pos, direction, score) +: rest ->
+          (ns, np) = [
+                      (direction, 1),
+                      (rotate true direction, 1001),
+                      (rotate false direction, 1001)
+                    ] |> List.map (cases (nextDir, cost) ->
+                            nextPos = move nextDir pos
+                            match day16.read maze nextPos with
+                              ?# -> None
+                              _ -> Some (nextPos, nextDir, score + cost)
+                          )
+                      |> List.somes
+                      |> List.foldLeft (cases (nextScores, nextPaths), p @ (nextPos, _, nextScore) ->
+                          if Map.get nextPos nextScores |> Optional.forAll(s -> s > nextScore) then
+                            (Map.put nextPos nextScore nextScores, p +: nextPaths)
+                          else
+                            (nextScores, nextPaths)
+                      ) (scores, rest)
+          search ns np
+    
+    search (Map.singleton startPos 0) [(startPos, ?>, 0)] |> Nat.toText
+
+  submitSolution (Day 16) (Part 1) solve
+
+
+day16.part2 : '{IO, Exception} ()
+day16.part2 = do
+  solve input =
+    maze = input |> day16.parseInput
+    
+    width = maze |> List.at 0 |> getOrBug "" |> List.size
+    height = maze |> List.size
+
+    startPos = (1, height - 2)
+    endPos = (width - 2, 1)
+
+    search : Map ((Nat, Nat), Char) (Nat, [(Nat, Nat)]) -> [((Nat, Nat), Char, Nat)] -> Nat -> [[(Nat, Nat)]]
+    search scores paths max =
+      match paths |> sortBy at3 |> List.filter(at3 >> (x -> x <= max)) with
+        [] -> 
+          Debug.trace "result" (Map.toList scores)
+          []
+        (pos, _, score) +: rest | eq pos endPos -> search scores rest score
+        (pos, direction, score) +: rest ->
+          (ns, np) = [
+                      (direction, 1),
+                      (rotate true direction, 1001),
+                      (rotate false direction, 1001)
+                    ] |> List.map (cases (nextDir, cost) ->
+                            nextPos = move nextDir pos
+                            match day16.read maze nextPos with
+                              ?# -> None
+                              _ -> Some (nextPos, nextDir, score + cost, pos)
+                          )
+                      |> List.somes
+                      |> List.foldLeft (cases (nextScores, nextPaths), (nextPos, nextDir, nextScore, prevPos) ->
+                          match Map.get (nextPos, nextDir)  nextScores with
+                            Some (s, prevs) 
+                              | s > nextScore -> (Map.put (nextPos, nextDir) (nextScore, [prevPos]) nextScores, (nextPos, nextDir, nextScore) +: nextPaths)
+                              | s == nextScore -> (Map.put (nextPos, nextDir) (s, prevPos +: prevs) nextScores, nextPaths)
+                              | otherwise -> (nextScores, nextPaths)
+                            None -> (Map.put (nextPos, nextDir) (nextScore, [prevPos]) nextScores, (nextPos, nextDir, nextScore) +: nextPaths)
+                      ) (scores, rest)
+          search ns np max
+    
+    search (Map.singleton (startPos, ?>) (0, [])) [(startPos, ?>, 0)] maxNat
+      |> Debug.tap "paths" 
+      |> List.flatMap id
+      |> distinct
+      |> List.size
+
+  """###############
+#.......#....E#
+#.#.###.#.###.#
+#.....#.#...#.#
+#.###.#####.#.#
+#.#.#.......#.#
+#.#.#####.###.#
+#...........#.#
+###.#.#####.#.#
+#...#.....#.#.#
+#.#.#.###.#.#.#
+#.....#...#.#.#
+#.###.#.#.#.#.#
+#S..#.....#...#
+###############""" |> solve |> Debug.trace "result"
+  -- submitSolution (Day 16) (Part 2) solve

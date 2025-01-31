@@ -1,0 +1,45 @@
+day12.parseIntput input =
+  input |> lines |> List.map toCharList
+
+day12.read map = cases (x, y) ->
+  Abort.toBug do
+    map |> List.at! x |> List.at! y
+
+
+day12.part1 : '{IO, Exception} ()
+day12.part1 = do
+  solve input =
+    map = input |> day12.parseIntput
+
+    length = map |> List.size - 1
+    width = map |> List.at 0 |> getOrBug "Invalid input" |> List.size - 1
+
+    getRegion id fences region positions =
+      match positions with
+        [] -> (fences, region)
+        p@(x, y) +: ps ->
+          neighbors = [
+                        if x > 0 && read map (x - 1, y) == id then Some (x - 1, y) else None,
+                        if x < length && read map (x + 1, y) == id then Some (x + 1, y) else None,
+                        if y > 0 && read map (x, y - 1) == id then Some (x, y - 1) else None,
+                        if y < width && read map (x, y + 1) == id then Some (x, y + 1) else None
+                      ] |> List.somes
+          newPos = neighbors |> List.filter (x -> (Set.contains x region || List.contains x ps) |> not)
+          getRegion id (fences + 4 - (List.size neighbors)) (Set.insert p region) (ps ++ newPos)
+
+    
+    map 
+      |> List.indexed
+      |> List.flatMap (cases (l, x) -> l |> List.indexed |> List.map(cases (r, y) -> ((x, y), r)))
+      |> List.foldLeft (cases (seen, count), (p@(x, y), r) ->
+        if Set.contains p seen then
+          (seen, count)
+        else
+          (fences, region) = getRegion r 0 Set.empty [(x, y)]
+          (Set.union seen region, count + fences * (Set.size region))
+      ) (Set.empty, 0)
+      |> at2
+      |> Nat.toText
+
+  submitSolution (Day 12) (Part 1) solve
+

@@ -1,0 +1,66 @@
+structural type day17.Registers = {a: Nat, b: Nat, c: Nat}
+
+day17.parseInput input =
+  register line = line |> Text.drop 12 |> Nat.fromText |> getOrBug "Invalid register"
+  program line = line |> Text.drop 9 |> Text.split ?, |> List.map(Nat.fromText >> getOrBug "Invalid register")
+  match input |> lines with
+    [a, b, c, _, p] ->
+      (Registers (register a) (register b) (register c), program p)
+    _ -> 
+      bug "Invalid put"
+
+day17.combo = cases
+  x, _ | x <= 3 -> x
+  4, Registers a _ _ -> a
+  5, Registers _ b _ -> b
+  6, Registers _ _ c -> c
+  _, _ -> bug "Invalid combo"
+
+run p pc rs out =
+  Debug.trace "setp" (pc, rs, p |> List.drop pc |> List.take 2) 
+  match p |> List.drop pc |> List.take 2 with
+    [0, op] ->
+      x = combo op rs
+      nextRegisters = Registers.a.modify (a -> a / Nat.pow 2 x) rs
+      run p (pc + 2) nextRegisters out
+    [1, op] ->
+      nextRegisters = Registers.b.modify (b -> Nat.xor b op) rs
+      run p (pc + 2) nextRegisters out
+    [2, op] ->
+      x = combo op rs
+      nextRegisters = Registers.b.set (Nat.mod x 8) rs
+      run p (pc + 2) nextRegisters out
+    [3, op]
+      | Registers.a rs == 0 -> run p (pc + 2) rs out
+      | otherwise ->  run p op rs out
+    [4, _] ->
+      c = Registers.c rs
+      nextRegisters = Registers.b.modify(b -> Nat.xor b c) rs
+      run p (pc + 2) nextRegisters out
+    [5, op] ->
+      x = combo op rs
+      nextOut = out :+ (Nat.mod x 8)
+      run p (pc + 2) rs nextOut
+    [6, op] ->
+      a = Registers.a rs
+      x = combo op rs
+      nextRegisters = Registers.b.set(a / Nat.pow 2 x) rs
+      run p (pc + 2) nextRegisters out
+    [7, op] ->
+      a = Registers.a rs
+      x = combo op rs
+      nextRegisters = Registers.c.set(a / Nat.pow 2 x) rs
+      run p (pc + 2) nextRegisters out
+    _ -> out
+
+
+day17.part1 : '{IO, Exception} ()
+day17.part1 = do
+  solve input = 
+    (registers, program) =  day17.parseInput input
+    run program 0 registers []
+      |> List.map Nat.toText
+      |> Text.join ","     
+                
+  submitSolution (Day 17) (Part 1) solve
+
